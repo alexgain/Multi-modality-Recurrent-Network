@@ -14,6 +14,7 @@ from sklearn.preprocessing import normalize
 ##warnings.filterwarnings("ignore")
 
 np.random.seed(1)
+cuda_boole = 0
 
 ##torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
@@ -138,7 +139,12 @@ class Net(nn.Module):
         self.W_in = W_in
         self.W_dna = W_dna
         self.dna = dna
-        self.state = Variable(torch.Tensor(adj_net.shape[0],1).uniform_(0, 0.1).cuda())
+
+        if cuda_boole:
+            self.state = Variable(torch.Tensor(adj_net.shape[0],1).uniform_(0, 0.1).cuda())
+        else:
+            self.state = Variable(torch.Tensor(adj_net.shape[0],1).uniform_(0, 0.1))
+            
         self.prev_state = copy(self.state)
         
         #dense out layer needed for classification:
@@ -169,7 +175,10 @@ class Net(nn.Module):
     def forward(self, input_data):
 
         if input_data.shape[0] != self.state.shape[0]:
-            self.state = Variable(torch.Tensor(adj_net.shape[0],input_data.shape[0]).uniform_(0, 0.1).cuda())
+            if cuda_boole:
+                self.state = Variable(torch.Tensor(adj_net.shape[0],input_data.shape[0]).uniform_(0, 0.1).cuda())
+            else:
+                self.state = Variable(torch.Tensor(adj_net.shape[0],input_data.shape[0]).uniform_(0, 0.1))
             self.prev_state = copy(self.state)
     
         for k in range(3):
@@ -181,7 +190,10 @@ class Net(nn.Module):
         params = list(self.parameters())
         L = len(params)-2
         params = params[:L]
-        Ws = [w.cuda().data.numpy().T for w in params]
+        if cuda_boole:
+            Ws = [w.cuda().data.numpy().T for w in params]
+        else:
+            Ws = [w.numpy().T for w in params]
         np.savez(file_name, args = [w for w in Ws])
 
 ###hyper-parameters:
@@ -202,7 +214,10 @@ adj_in = torch.round(torch.Tensor(net_size, input_size).uniform_(0, 1))
 W_in = torch.Tensor(net_size, input_size).normal_(0, 0.01)
 
 ##changing tensors to Variables:
-adj_net, W_net, adj_in, W_in = Variable(adj_net.cuda(), requires_grad = False), Variable(W_net.cuda(), requires_grad = True), Variable(adj_in.cuda(), requires_grad = False), Variable(W_in.cuda(), requires_grad = True)
+if cuda_boole:
+    adj_net, W_net, adj_in, W_in = Variable(adj_net.cuda(), requires_grad = False), Variable(W_net.cuda(), requires_grad = True), Variable(adj_in.cuda(), requires_grad = False), Variable(W_in.cuda(), requires_grad = True)
+else:
+    adj_net, W_net, adj_in, W_in = Variable(adj_net, requires_grad = False), Variable(W_net, requires_grad = True), Variable(adj_in, requires_grad = False), Variable(W_in, requires_grad = True)
 
 ###initializing W_dna and dna:
 
@@ -211,8 +226,12 @@ W_dna = torch.Tensor(500,500).uniform_(0, 1)
 dna = torch.Tensor(500,500).uniform_(0, 1)
 
 #changing to dna stuff to Variables:
-W_dna = Variable(W_dna.cuda(), requires_grad = True)
-dna = Variable(dna.cuda(), requires_grad = False)
+if cuda_boole:
+    W_dna = Variable(W_dna.cuda(), requires_grad = True)
+    dna = Variable(dna.cuda(), requires_grad = False)
+else:
+    W_dna = Variable(W_dna, requires_grad = True)
+    dna = Variable(dna, requires_grad = False)
 
 #computing adj_net:
 def relu_tensor(x):
@@ -223,7 +242,9 @@ def relu_tensor(x):
 
 ###defining network:
 my_net = Net(adj_net, adj_in, W_net, W_in, dna, W_dna)
-my_net.cuda()
+if cuda_boole:
+    my_net.cuda()
+
 
 ###test:
 ##inputyo = Variable(torch.Tensor(784,1).uniform_(0,1))
@@ -254,7 +275,8 @@ test_loader = torch.utils.data.DataLoader(test, batch_size=BS, shuffle=False)
 correct = 0
 total = 0
 for images, labels in train_loader:
-    images, labels = images.cuda(), labels.cuda()
+    if cuda_boole:
+        images, labels = images.cuda(), labels.cuda()
     images = Variable(images.view(-1, 28*28))
     outputs = my_net(images)
     _, predicted = torch.max(outputs.data, 1)
@@ -270,7 +292,8 @@ print('Accuracy of the network on the train images: %d %%' % (100 * correct / to
 correct = 0
 total = 0
 for images, labels in test_loader:
-    images, labels = images.cuda(), labels.cuda()
+    if cuda_boole:
+        images, labels = images.cuda(), labels.cuda()
     images = Variable(images.view(-1, 28*28))
     outputs = my_net(images)
     _, predicted = torch.max(outputs.data, 1)
@@ -290,12 +313,16 @@ for epoch in range(epochs):
 
     for i, (x,y) in enumerate(train_loader):
 
-        ##cuda shit:
-        x = x.cuda()
+        ##cuda:
+        if cuda_boole:
+            x = x.cuda()
+            y = y.float().cuda()
+        else:
+            y = y.float()
         
         ##data preprocessing for optimization purposes:
         x = Variable(x)
-        y = Variable(y.float().cuda()) #MSE 1-d output version
+        y = Variable(y) #MSE 1-d output version
 
         ###regular BP gradient update:
 ##        print(my_net.W_dna)
@@ -320,7 +347,8 @@ for epoch in range(epochs):
             correct = 0
             total = 0
             for images, labels in train_loader:
-                images, labels = images.cuda(), labels.cuda()
+                if cuda_boole:
+                    images, labels = images.cuda(), labels.cuda()
                 images = Variable(images.view(-1, 28*28))
                 outputs = my_net(images)
                 _, predicted = torch.max(outputs.data, 1)
@@ -336,7 +364,8 @@ for epoch in range(epochs):
             correct = 0
             total = 0
             for images, labels in test_loader:
-                images, labels = images.cuda(), labels.cuda()
+                if cuda_boole:
+                    images, labels = images.cuda(), labels.cuda()
                 images = Variable(images.view(-1, 28*28))
                 outputs = my_net(images)
                 _, predicted = torch.max(outputs.data, 1)
@@ -356,41 +385,6 @@ for epoch in range(epochs):
 
 t2 = time()
 print((t2 - t1)/60,'total minutes elapsed')
-             
-        
-
-####printing train statistics:
-### Test the Model
-##correct = 0
-##total = 0
-##for images, labels in train_loader:
-##    images, labels = images.cuda(), labels.cuda()
-##    images = Variable(images.view(-1, 28*28))
-##    outputs = my_net(images)
-##    _, predicted = torch.max(outputs.data, 1)
-##    labels = torch.max(labels.float(),1)[1]
-####    predicted = torch.round(outputs.data).view(-1).long()
-##    total += labels.size(0)
-##    correct += (predicted.float() == labels.float()).sum()
-##
-##print('Accuracy of the network on the train images: %d %%' % (100 * correct / total))
-##
-####printing test statistics:
-### Test the Model
-##correct = 0
-##total = 0
-##for images, labels in test_loader:
-##    images, labels = images.cuda(), labels.cuda()
-##    images = Variable(images.view(-1, 28*28))
-##    outputs = my_net(images)
-##    _, predicted = torch.max(outputs.data, 1)
-##    labels = torch.max(labels.float(),1)[1]
-####    predicted = torch.round(outputs.data).view(-1).long()
-##    total += labels.size(0)
-##    correct += (predicted.float() == labels.float()).sum()
-##
-##print('Accuracy of the network on the 10000 test images: %d %%' % (100 * correct / total))
-##
 
 
 
