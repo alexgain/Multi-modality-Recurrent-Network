@@ -5,10 +5,10 @@ Project for Machine Learning: Deep Learning course at JHU CS Department.
 The GAN dateset images generated can be found at https://drive.google.com/file/d/1HLGoAPBRgXZ0z9TzKmmMglmqjvi1bS9u/view?usp=sharing. Reference code for generating the images can be found here: https://github.com/robbiebarrat/art-DCGAN
 
 Latest update:
--Trained on multiple datasets
--Trained via EA
--Trained via Synthetic images from GAN
--Adjacency matrix plots
--main_cifar is for cifar10 dataset, which a used slightly different loss and setup
--main multi (current) is for all other datasets (mnist, fashion-mnist, GAN dataset) for the main model
--main_fashion EA.py is for Evolutionary Algorithm training of the adjacency for fashion-mnist dataset.
+* Trained on multiple datasets
+* Trained via EA
+* Trained via Synthetic images from GAN
+* Adjacency matrix plots
+* main_cifar is for cifar10 dataset, which a used slightly different loss and setup
+* main multi (current) is for all other datasets (mnist, fashion-mnist, GAN dataset) for the main model
+* main_fashion EA.py is for Evolutionary Algorithm training of the adjacency for fashion-mnist dataset.
