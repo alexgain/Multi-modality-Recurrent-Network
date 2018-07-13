@@ -165,7 +165,7 @@ class Net(nn.Module):
         ###initializing adjacency matrices and weights:
 
         ##network adjacency and weights:
-        self.adj_net = torch.round(torch.Tensor(net_size, net_size).uniform_(0, 1))
+        self.adj_net = torch.round(torch.Tensor(num_classes, net_size, net_size).uniform_(0, 1))
         self.W_net = torch.Tensor(net_size, net_size).normal_(0, 0.01)
 
         ##input adjacency and weights:
@@ -183,7 +183,7 @@ class Net(nn.Module):
         ###initializing W_dna and dna:
 
         #computing via random uniform:
-        self.W_dna = torch.Tensor(net_size,net_size).uniform_(0, 1)
+        self.W_dna = torch.Tensor(num_classes, net_size,net_size).uniform_(0, 1)
         self.dna = torch.Tensor(net_size,net_size).uniform_(0, 1)
 
         #changing to dna stuff to nn.Parameters/Variables:
@@ -194,7 +194,7 @@ class Net(nn.Module):
             self.W_dna = nn.Parameter(self.W_dna, requires_grad = True)
             self.dna = Variable(self.dna, requires_grad = False)
 
-        seed = torch.Tensor(self.adj_net.shape[0]).uniform_(0, 0.1)
+        seed = torch.Tensor(self.adj_net.shape[1]).uniform_(0, 0.1)
         
         if cuda_boole:
             self.state = Variable(seed.cuda(), requires_grad = True)
@@ -202,7 +202,7 @@ class Net(nn.Module):
             self.state = Variable(seed, requires_grad = True)
                     
         #dense out layer needed for classification:
-        self.ff_out = nn.Linear(self.state.shape[0], 10, bias = False) #output     
+        self.ff_out = nn.Linear(self.state.shape[0],1) #output     
         
         #activations:
         self.relu = nn.ReLU()
@@ -240,7 +240,7 @@ class Net(nn.Module):
             input_data = self.ff_net(input_data)
 
         ##Setting initial state for each datapoint:
-        seed = torch.Tensor(input_data.shape[0],self.adj_net.shape[0]).uniform_(0, 0.1)
+        seed = torch.Tensor(input_data.shape[0],self.adj_net.shape[1]).uniform_(0, 0.1)
 
         if cuda_boole:
             self.state = Variable(seed.cuda(), requires_grad = True)
@@ -248,17 +248,29 @@ class Net(nn.Module):
             self.state = Variable(seed, requires_grad = True)
         
         ##Updating adj_net (and adj_in?):
-        self.adj_net = normalize_01(self.relu(self.W_dna.mm(self.dna)))
+        self.adj_net = normalize_01(self.relu(self.W_dna.matmul(self.dna)))
+        #adj_net is now batchsize*10*500*500
+        #self.adj_net = normalize_01(self.relu(self.W_dna.mm(self.dna)))
         self.adj_net = (1 / (1+torch.exp(-(80*(self.adj_net - 0.5)))))
 
         ##Forward propagation:
         x_bias = ((self.adj_in*self.W_in).matmul(torch.transpose(input_data,0,1)))
 
         x = self.relu((self.adj_net*self.W_net).matmul(self.state.t())) + x_bias
+
         x = self.relu((self.adj_net*self.W_net).matmul(x)) + x_bias
-        x = self.relu((self.adj_net*self.W_net).matmul(x)) + x_bias
+        #print(x.shape)
+
+##        x = x.permute(2,0,1)
+##        outs = self.sm(self.ff_out(x))
                 
-        return self.sm(self.ff_out(x.t()))
+        outs = []
+        for j in range(num_classes):
+            outs.append(self.sm(self.ff_out(x[j].t())))
+        outs = torch.cat(outs, dim = 1)
+
+        outs = outs / outs.sum()
+        return outs
         
     def plot_adj(self):
         self.adj_net = normalize_01(self.relu(self.W_dna.mm(self.dna)))
