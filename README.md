@@ -1,6 +1,5 @@
 # Multi-modality-Recurrent-Network
 Novel arbitrarily recurrent structure that learns optimal pathways/adjacency matrix through a clever use of backpropagation.
-Project for Machine Learning: Deep Learning course at JHU CS Department.
 
 The GAN dateset images generated can be found at https://drive.google.com/file/d/1HLGoAPBRgXZ0z9TzKmmMglmqjvi1bS9u/view?usp=sharing. GAN dataset images in .npy format can be found at https://drive.google.com/file/d/1pXXLASH0dTjHSTuyG6wNAxqWQ7zG48vg/view.  Reference code for generating the images can be found here: https://github.com/robbiebarrat/art-DCGAN
 
